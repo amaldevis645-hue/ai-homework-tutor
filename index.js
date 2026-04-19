@@ -9,14 +9,63 @@ app.use(cors());
 app.use(express.json());
 
 /**
- * Health check
+ * HEALTH CHECK (browser test)
  */
 app.get("/", (req, res) => {
   res.send("AI School Tutor is running 🚀");
 });
 
 /**
- * MAIN AI TUTOR ROUTE
+ * BROWSER TEST ENDPOINT (NO POSTMAN NEEDED)
+ * Open this in browser:
+ * https://your-app.onrender.com/ask-test
+ */
+app.get("/ask-test", async (req, res) => {
+  const question = "What is photosynthesis?";
+
+  try {
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [
+                {
+                  text: `You are a school teacher. Explain simply:\n\n${question}`
+                }
+              ]
+            }
+          ]
+        })
+      }
+    );
+
+    const data = await response.json();
+
+    const answer =
+      data?.candidates?.[0]?.content?.parts?.[0]?.text ||
+      "No response from AI";
+
+    res.json({
+      question,
+      answer
+    });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({
+      error: "AI request failed"
+    });
+  }
+});
+
+/**
+ * REAL API (for future app)
  */
 app.post("/ask", async (req, res) => {
   const { question, chapter } = req.body;
@@ -25,24 +74,22 @@ app.post("/ask", async (req, res) => {
     return res.status(400).json({ error: "Question is required" });
   }
 
-  // OPTIONAL: simple syllabus lock (MVP version)
   const syllabusContext = chapter
-    ? `You are only allowed to answer using knowledge from: ${chapter}.`
+    ? `You must answer ONLY using this chapter: ${chapter}`
     : "You are a school tutor.";
 
   const prompt = `
-You are an expert school teacher.
+You are a strict school teacher.
 
 Rules:
-- Explain in simple language
-- Step-by-step answers
-- Use examples if needed
-- If answer is not in syllabus, say "Not in syllabus"
-- Do NOT hallucinate
+- Simple explanation
+- Step-by-step
+- If not in syllabus, say "Not in syllabus"
+- No hallucination
 
 ${syllabusContext}
 
-Student Question:
+Question:
 ${question}
 `;
 
@@ -71,8 +118,7 @@ ${question}
       "No response from AI";
 
     res.json({
-      answer,
-      chapter: chapter || "general"
+      answer
     });
 
   } catch (err) {
