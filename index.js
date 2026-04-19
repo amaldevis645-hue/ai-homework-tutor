@@ -9,15 +9,15 @@ app.use(cors());
 app.use(express.json());
 
 /**
- * HEALTH CHECK (browser test)
+ * HEALTH CHECK
  */
 app.get("/", (req, res) => {
   res.send("AI School Tutor is running 🚀");
 });
 
 /**
- * BROWSER TEST ENDPOINT (NO POSTMAN NEEDED)
- * Open this in browser:
+ * BROWSER TEST (NO POSTMAN NEEDED)
+ * Open:
  * https://your-app.onrender.com/ask-test
  */
 app.get("/ask-test", async (req, res) => {
@@ -36,7 +36,7 @@ app.get("/ask-test", async (req, res) => {
             {
               parts: [
                 {
-                  text: `You are a school teacher. Explain simply:\n\n${question}`
+                  text: `You are a strict school teacher. Explain in simple steps:\n\n${question}`
                 }
               ]
             }
@@ -47,25 +47,32 @@ app.get("/ask-test", async (req, res) => {
 
     const data = await response.json();
 
+    // Debug log (visible in Render logs)
+    console.log("GEMINI RESPONSE:", JSON.stringify(data, null, 2));
+
     const answer =
-      data?.candidates?.[0]?.content?.parts?.[0]?.text ||
+      data?.candidates?.[0]?.content?.parts?.map(p => p.text).join("") ||
+      data?.error?.message ||
       "No response from AI";
 
     res.json({
       question,
-      answer
+      answer,
+      raw: data
     });
 
   } catch (err) {
-    console.error(err);
+    console.error("ERROR:", err);
+
     res.status(500).json({
-      error: "AI request failed"
+      error: "AI request failed",
+      details: err.message
     });
   }
 });
 
 /**
- * REAL API (for future app)
+ * REAL APP ENDPOINT (FOR FUTURE FRONTEND)
  */
 app.post("/ask", async (req, res) => {
   const { question, chapter } = req.body;
@@ -75,17 +82,17 @@ app.post("/ask", async (req, res) => {
   }
 
   const syllabusContext = chapter
-    ? `You must answer ONLY using this chapter: ${chapter}`
+    ? `You must answer ONLY from this chapter: ${chapter}. If not in syllabus say "Not in syllabus".`
     : "You are a school tutor.";
 
   const prompt = `
-You are a strict school teacher.
+You are a strict but helpful school teacher.
 
 Rules:
 - Simple explanation
 - Step-by-step
-- If not in syllabus, say "Not in syllabus"
 - No hallucination
+- Stay inside syllabus
 
 ${syllabusContext}
 
@@ -113,18 +120,21 @@ ${question}
 
     const data = await response.json();
 
+    console.log("GEMINI RESPONSE:", JSON.stringify(data, null, 2));
+
     const answer =
-      data?.candidates?.[0]?.content?.parts?.[0]?.text ||
+      data?.candidates?.[0]?.content?.parts?.map(p => p.text).join("") ||
+      data?.error?.message ||
       "No response from AI";
 
-    res.json({
-      answer
-    });
+    res.json({ answer });
 
   } catch (err) {
-    console.error(err);
+    console.error("ERROR:", err);
+
     res.status(500).json({
-      error: "AI request failed"
+      error: "AI request failed",
+      details: err.message
     });
   }
 });
