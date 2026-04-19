@@ -16,16 +16,14 @@ app.get("/", (req, res) => {
 });
 
 /**
- * BROWSER TEST (NO POSTMAN NEEDED)
- * Open:
- * https://your-app.onrender.com/ask-test
+ * BROWSER TEST (NO POSTMAN)
  */
 app.get("/ask-test", async (req, res) => {
   const question = "What is photosynthesis?";
 
   try {
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${process.env.GEMINI_API_KEY}`,
       {
         method: "POST",
         headers: {
@@ -36,7 +34,7 @@ app.get("/ask-test", async (req, res) => {
             {
               parts: [
                 {
-                  text: `You are a strict school teacher. Explain in simple steps:\n\n${question}`
+                  text: `You are a school teacher. Explain simply:\n\n${question}`
                 }
               ]
             }
@@ -47,7 +45,6 @@ app.get("/ask-test", async (req, res) => {
 
     const data = await response.json();
 
-    // Debug log (visible in Render logs)
     console.log("GEMINI RESPONSE:", JSON.stringify(data, null, 2));
 
     const answer =
@@ -62,7 +59,7 @@ app.get("/ask-test", async (req, res) => {
     });
 
   } catch (err) {
-    console.error("ERROR:", err);
+    console.error(err);
 
     res.status(500).json({
       error: "AI request failed",
@@ -72,7 +69,7 @@ app.get("/ask-test", async (req, res) => {
 });
 
 /**
- * REAL APP ENDPOINT (FOR FUTURE FRONTEND)
+ * REAL APP ENDPOINT
  */
 app.post("/ask", async (req, res) => {
   const { question, chapter } = req.body;
@@ -81,20 +78,15 @@ app.post("/ask", async (req, res) => {
     return res.status(400).json({ error: "Question is required" });
   }
 
-  const syllabusContext = chapter
-    ? `You must answer ONLY from this chapter: ${chapter}. If not in syllabus say "Not in syllabus".`
-    : "You are a school tutor.";
-
   const prompt = `
-You are a strict but helpful school teacher.
+You are a strict school tutor.
 
 Rules:
 - Simple explanation
 - Step-by-step
-- No hallucination
-- Stay inside syllabus
+- If not in syllabus say "Not in syllabus"
 
-${syllabusContext}
+Chapter: ${chapter || "General"}
 
 Question:
 ${question}
@@ -102,7 +94,7 @@ ${question}
 
   try {
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${process.env.GEMINI_API_KEY}`,
       {
         method: "POST",
         headers: {
@@ -130,7 +122,7 @@ ${question}
     res.json({ answer });
 
   } catch (err) {
-    console.error("ERROR:", err);
+    console.error(err);
 
     res.status(500).json({
       error: "AI request failed",
