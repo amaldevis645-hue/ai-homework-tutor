@@ -16,9 +16,7 @@ app.get("/", (req, res) => {
 });
 
 /**
- * DEBUG: LIST AVAILABLE MODELS (IMPORTANT)
- * Open this first:
- * https://your-app.onrender.com/models
+ * LIST MODELS (for debugging anytime)
  */
 app.get("/models", async (req, res) => {
   try {
@@ -27,25 +25,21 @@ app.get("/models", async (req, res) => {
     );
 
     const data = await response.json();
-
     res.json(data);
   } catch (err) {
-    res.status(500).json({
-      error: "Failed to fetch models",
-      details: err.message
-    });
+    res.status(500).json({ error: err.message });
   }
 });
 
 /**
- * BROWSER TEST AI
+ * BROWSER TEST (WORKING AI)
  */
 app.get("/ask-test", async (req, res) => {
   const question = "What is photosynthesis?";
 
   try {
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${process.env.GEMINI_API_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
       {
         method: "POST",
         headers: {
@@ -56,7 +50,7 @@ app.get("/ask-test", async (req, res) => {
             {
               parts: [
                 {
-                  text: `Explain simply for a student:\n${question}`
+                  text: `You are a school teacher. Explain simply step by step:\n\n${question}`
                 }
               ]
             }
@@ -107,7 +101,7 @@ ${question}
 
   try {
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${process.env.GEMINI_API_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
       {
         method: "POST",
         headers: {
