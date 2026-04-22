@@ -8,48 +8,53 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-const API_KEY = process.env.GEMINI_API_KEY;
-
 /**
- * FUNCTION: Call Gemini with fallback
+ * FUNCTION: Call OpenRouter with fallback
  */
-async function callGemini(prompt) {
+async function callAI(prompt) {
   const models = [
-    "gemini-2.5-flash",
-    "gemini-2.0-flash",
-    "gemini-2.0-flash-lite"
+    "deepseek/deepseek-chat",
+    "mistralai/mistral-7b-instruct",
+    "meta-llama/llama-3-8b-instruct"
   ];
+
+  const safePrompt = prompt.slice(0, 4000); // prevent oversized input
 
   for (let model of models) {
     try {
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${API_KEY}`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            contents: [
-              {
-                parts: [{ text: prompt }]
-              }
-            ]
-          })
-        }
-      );
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 8000);
+
+      const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY}`,
+          "Content-Type": "application/json",
+          "HTTP-Referer": "http://localhost:3000",
+          "X-Title": "AI Tutor"
+        },
+        body: JSON.stringify({
+          model,
+          messages: [
+            {
+              role: "user",
+              content: safePrompt
+            }
+          ]
+        }),
+        signal: controller.signal
+      });
+
+      clearTimeout(timeout);
 
       const data = await response.json();
 
-      // If model overloaded → try next
-      if (data?.error?.code === 503) {
-        console.log(`${model} overloaded, trying next...`);
+      if (data?.error) {
+        console.log(`${model} failed: ${data.error.message}`);
         continue;
       }
 
-      const answer =
-        data?.candidates?.[0]?.content?.parts?.map(p => p.text).join("") ||
-        data?.error?.message;
+      const answer = data?.choices?.[0]?.message?.content;
 
       if (answer) return answer;
 
@@ -58,7 +63,7 @@ async function callGemini(prompt) {
     }
   }
 
-  return "AI is busy right now. Please try again in a moment.";
+  return "AI is busy right now. Please try again.";
 }
 
 /**
@@ -79,7 +84,7 @@ Explain this simply for a student:
 ${question}
 `;
 
-  const answer = await callGemini(prompt);
+  const answer = await callAI(prompt);
 
   res.json({ question, answer });
 });
@@ -104,7 +109,7 @@ Question:
 ${question}
 `;
 
-  const answer = await callGemini(prompt);
+  const answer = await callAI(prompt);
 
   res.json({ answer });
 });
